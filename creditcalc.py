@@ -1,13 +1,53 @@
 from math import ceil,log
+from sys import argv
+
+class Parser :
+    def __init__(self,arg=[]):
+        self.args = arg
+        self.arguments= {}
 
 
-# credit_principal = 'Credit principal: 1000'
-# final_output = 'The credit has been repaid!'
-# first_month = 'Month 1: paid out 250'
-# second_month = 'Month 2: paid out 250'
-# third_month = 'Month 3: paid out 500'
-#
-# print(credit_principal,first_month,second_month,third_month,final_output,sep="\n")
+    def parse(self):
+
+
+        if not len(self.args) % 2 == 0:
+            return "Incorrect parameters"
+        else:
+            for  data  in  self.args:
+
+                if data[:2] == "--":
+                    key,value = data[2:].split("=")
+                    if not key == "type":
+                        value = float(value)
+                    self.arguments[key]=value
+                else:
+                    continue
+
+        return self.valid()
+
+    def valid(self):
+        if not "interest" in self.arguments:
+            return False
+        if not "type" in self.arguments:
+            return False
+        if self.arguments["type"]=="diff":
+            return len(self.arguments)== 4 and not "payment" in self.arguments
+        else:
+            return len(self.arguments) == 4
+
+    def selection(self):
+        if self.arguments["type"] == "diff":
+            return "diff"
+        else:
+            options ="payment principal periods type".split(" ")
+            for key in options:
+                if not key in self.arguments:
+                    return key
+
+
+    def __getitem__(self, item):
+        return self.arguments[item]
+
 
 def get_float(msg=""):
     while True:
@@ -15,8 +55,6 @@ def get_float(msg=""):
             return float(input(msg))
         except:
             print("invalid input")
-
-
 
 
 def get_options():
@@ -28,14 +66,10 @@ type "p" - for credit principal:
     return input(options)
 
 
-# def get_credit_principal():
-#     return get_float("Enter the credit   principal: ")
 
-def compute_number_month(credit):
-    payment=get_float("Enter monthly payment: ")
-    interest = float(input("Enter credit interest: ")) / 1200
+
+def compute_number_month(credit,payment,interest):
     count  = ceil(log( payment /  ( payment - interest * credit), interest + 1))
-    print(count)
     years = count // 12
     months = count  %12
     msg = "You need "
@@ -46,50 +80,79 @@ def compute_number_month(credit):
             msg += "and "
         msg += str(ceil(months)) + " months "
     msg += "to repay this credit!"
-    return msg
+    print(msg)
+    print()
+    print(f"Overpayment = {payment * count - credit}")
 
 
 
-def compute_annuity_monthly_payment(credit):
-    periods = int(input("Enter count of periods:"))
-    interest = float(input("Enter credit interest: ")) / 1200
+def compute_annuity_monthly_payment(credit,periods,interest):
     annuity = ceil(credit * (interest  * ( 1 + interest) ** periods) / ((1 + interest )**periods -1))
-    return f"Your annuity payment = {annuity}!"
+    print( f"Your annuity payment = {periods * annuity - credit}!")
+    print()
+    print(f"Overpayment = {annuity}")
 
-# def compute_monthly_payment(credit):
-#     number_month=get_int("Enter count of months: ")
-#     payment=ceil(credit/number_month)
-#     last_payment = credit - payment * (number_month-1)
-#     msg = f"Your monthly payment = {payment} "
-#     if last_payment > 0:
-#         msg += f"with last month payment = {last_payment}"
-#     return msg
 
 def get_credit_principal():
     return  float (input("Enter credit principal: "))
 
-def compute_credit_principal():
-    payment = float(input("Enter monthly payment"))
-    periods = int(input("Enter count of periods"))
-    interest  = float(input("Enter credit interest")) /1200
-    credit= payment / (( interest * (1 + interest) ** periods ) / ( (1 + interest) ** periods  - 1))
-    return f"Your credit principal = {credit}!"
+def compute_credit_principal(payment,periods,interest):
+    credit= round(payment / (( interest * (1 + interest) ** periods ) / ( (1 + interest) ** periods  - 1)))
 
-def main():
-    option=get_options()
-    if option=="n":
-        credit_principal = get_credit_principal()
-        result=compute_number_month(credit_principal)
-    elif option == "a":
-        credit_principal = get_credit_principal()
-        result=compute_annuity_monthly_payment(credit_principal)
-    elif option=="p":
-        result = compute_credit_principal()
-
-    print(result)
+    print( f"Your credit principal = { periods * payment - credit}!")
+    print()
+    print(f"Overpayment = {credit}")
 
 
-main()
+def parse_arg():
+    if len(argv[1:]) % 2 == 0:
+        return "Incorrect parameters"
+
+
+def compute_differential(principal, periods, interest):
+    d = lambda i : ceil((principal/ periods )+ interest * ( principal * ( 1 -  ( i - 1 )  / periods)))
+    values= [ d(i) for i in range(1,int(periods)+1)]
+    total = sum(values)
+    for i,value in enumerate(values):
+         print(f"Month {i+1}: paid out {d(i+1)}")
+    overpayment = total - principal
+    print(f"Overpayment = {overpayment}")
+
+
+
+def application():
+
+    arguments = argv[1:]
+    parser = Parser(arguments)
+    parser.parse()
+
+    if not parser.valid():
+        print("incorrect parameters")
+    else:
+        selection = parser.selection()
+        # print(selection)
+        interest = parser["interest"] / 1200
+        if selection == "diff":
+            compute_differential(parser["principal"],parser["periods"],interest)
+        else:
+            if selection == "periods":
+                payment = parser["payment"]
+                credit = parser["principal"]
+                compute_number_month(credit,payment,interest)
+
+            elif selection == "principal":
+                periods = parser["periods"]
+                payment = parser["payment"]
+                compute_credit_principal(payment,periods,interest)
+
+            elif selection == "payment":
+                principal = parser["principal"]
+                periods = parser["periods"]
+                compute_annuity_monthly_payment(principal,periods,interest)
+
+
+application()
+
 
 
 
